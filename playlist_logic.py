@@ -106,35 +106,53 @@ def merge_playlists(a: PlaylistMap, b: PlaylistMap) -> PlaylistMap:
     return merged
 
 
+def deduplicate_songs(songs: List[Song]) -> List[Song]:
+    """Return a copy of the list with duplicate title+artist pairs removed."""
+    seen_keys = set()
+    unique_songs = []
+
+    for song in songs:
+        title = str(song.get("title", ""))
+        artist = str(song.get("artist", ""))
+        key = (title, artist)
+
+        if key not in seen_keys:
+            seen_keys.add(key)
+            unique_songs.append(song)
+
+    return unique_songs
+
+
 def compute_playlist_stats(playlists: PlaylistMap) -> Dict[str, object]:
     """Compute statistics across all playlists."""
-    all_songs: List[Song] = []
-    for songs in playlists.values():
-        all_songs.extend(songs)
+    # Deduplicate each mood bucket individually
+    hype_songs = deduplicate_songs(playlists.get("Hype", []))
+    chill_songs = deduplicate_songs(playlists.get("Chill", []))
+    mixed_songs = deduplicate_songs(playlists.get("Mixed", []))
 
-    hype = playlists.get("Hype", [])
-    chill = playlists.get("Chill", [])
-    mixed = playlists.get("Mixed", [])
+    # Combine all buckets into one deduplicated list for cross-playlist stats
+    all_songs = deduplicate_songs(hype_songs + chill_songs + mixed_songs)
 
-    total = len(hype)
-    hype_ratio = len(hype) / total if total > 0 else 0.0
+    total_songs = len(all_songs)
 
-    avg_energy = 0.0
+    hype_ratio = len(hype_songs) / total_songs if total_songs > 0 else 0.0
+
     if all_songs:
-        total_energy = sum(song.get("energy", 0) for song in hype)
-        avg_energy = total_energy / len(all_songs)
+        avg_energy = sum(song.get("energy", 0) for song in hype_songs) / total_songs
+    else:
+        avg_energy = 0.0
 
-    top_artist, top_count = most_common_artist(all_songs)
+    top_artist, top_artist_count = most_common_artist(all_songs)
 
     return {
-        "total_songs": len(all_songs),
-        "hype_count": len(hype),
-        "chill_count": len(chill),
-        "mixed_count": len(mixed),
+        "total_songs": total_songs,
+        "hype_count": len(hype_songs),
+        "chill_count": len(chill_songs),
+        "mixed_count": len(mixed_songs),
         "hype_ratio": hype_ratio,
         "avg_energy": avg_energy,
         "top_artist": top_artist,
-        "top_artist_count": top_count,
+        "top_artist_count": top_artist_count,
     }
 
 
@@ -168,7 +186,7 @@ def search_songs(
 
     for song in songs:
         value = str(song.get(field, "")).lower()
-        if value and value in q:
+        if value and q in value:
             filtered.append(song)
 
     return filtered
