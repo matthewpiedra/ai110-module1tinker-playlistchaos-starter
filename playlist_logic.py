@@ -99,10 +99,14 @@ def build_playlists(songs: List[Song], profile: Dict[str, object]) -> PlaylistMa
 
 def merge_playlists(a: PlaylistMap, b: PlaylistMap) -> PlaylistMap:
     """Merge two playlist maps into a new map."""
+    all_keys = set(list(a.keys()) + list(b.keys()))
     merged: PlaylistMap = {}
-    for key in set(list(a.keys()) + list(b.keys())):
-        merged[key] = a.get(key, [])
-        merged[key].extend(b.get(key, []))
+
+    for mood in all_keys:
+        songs_from_a = a.get(mood, [])
+        songs_from_b = b.get(mood, [])
+        merged[mood] = songs_from_a + songs_from_b
+
     return merged
 
 
